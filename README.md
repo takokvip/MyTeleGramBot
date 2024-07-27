@@ -1,5 +1,4 @@
-# MyTeleGramBot - TAK OKVIP
-# Telegram Bot - U-rep-to-rep
+# Telegram Bot - CODE BY TAK OKVIP
 
 ## How to Install
 
