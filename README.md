@@ -1,19 +1,59 @@
 # MyTeleGramBot - TAK OKVIP
-HOW TO INSTALL
-**PYTHON REQUIRED**
-Step 1: pip install -r requirements.txt
-Step 2: Config file .env
-Step 3: python U-rep-to-rep.py
+# Telegram Bot - U-rep-to-rep
 
-BOT FUNCTIONS
-  1. /xoa & /xoa @user: Delete all from Admin & Bot side
-  2. /clear & /clear @user: Delete only on BOT side
-  3. /adduser & /deluser: Add users to avoid abuse
-  4. /addgroup & /delgroup: Add groups with permission to listen to messages
-  5. /listuser & /listgroup: Show added group ids
-  6. /showuser & /showgroup: Show added excluded users
+## How to Install
 
-HOW TO REPLY TO A MESSAGE
-When there is a message to BOT, BOT will forward it to admin. If admin wants to reply, just need: Content @User | that is for personal messages.
-For group messages, just need: Content @group_id
-All sent to BOT, BOT will be the intermediary to send the message, definitely do not leave admin name anywhere!
+**Python Required**
+
+1. Install the required libraries:
+
+    ```sh
+    pip install -r requirements.txt
+    ```
+
+2. Configure the `.env` file:
+
+    Create a `.env` file in the same directory as your script and add the following content:
+
+    ```env
+    API_ID=your_api_id
+    API_HASH=your_api_hash
+    PHONE_NUMBER=your_phone_number
+    TARGET_USER=your_target_user
+    ```
+
+    Replace `your_api_id`, `your_api_hash`, `your_phone_number`, and `your_target_user` with your actual Telegram API credentials and target user.
+
+3. Run the script:
+
+    ```sh
+    python U-rep-to-rep.py
+    ```
+
+## Bot Functions
+
+1. **/xoa & /xoa @user**: Delete all messages from both Admin & Bot side.
+2. **/clear & /clear @user**: Delete messages only on the BOT side.
+3. **/adduser & /deluser**: Add or remove users to avoid abuse.
+4. **/addgroup & /delgroup**: Add or remove groups with permission to listen to messages.
+5. **/listuser & /listgroup**: Show the list of added users and groups.
+6. **/showuser & /showgroup**: Show the list of excluded users and allowed groups.
+
+## How to Reply to a Message
+
+When there is a message to the BOT, the BOT will forward it to the admin. If the admin wants to reply, just follow these instructions:
+
+- For personal messages: Send a message in the format `Content @User`.
+- For group messages: Send a message in the format `Content @group_id`.
+
+All messages should be sent to the BOT, and the BOT will act as an intermediary to send the message, ensuring that the admin's name is not exposed anywhere.
+
+---
+
+## Example .env file
+
+```env
+API_ID=
+API_HASH=
+PHONE_NUMBER=
+TARGET_USER=
