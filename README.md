@@ -38,6 +38,10 @@
 5. **/listuser & /listgroup**: Show the list of added users and groups.
 6. **/showuser & /showgroup**: Show the list of excluded users and allowed groups.
 
+   ```sh
+    /spam @user (learn don't abuse ^^!)
+    ```
+
 ## How to Reply to a Message
 
 When there is a message to the BOT, the BOT will forward it to the admin. If the admin wants to reply, just follow these instructions:
