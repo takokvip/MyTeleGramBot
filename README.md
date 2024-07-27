@@ -56,7 +56,7 @@ All messages should be sent to the BOT, and the BOT will act as an intermediary 
 ## Example .env file
 
 ```env
-API_ID=
-API_HASH=
-PHONE_NUMBER=
-TARGET_USER=
+API_ID=25169999
+API_HASH=a95b580f11a6b1975c9d64f15502b999
+PHONE_NUMBER=+84987654321
+TARGET_USER=MyAdminControl
