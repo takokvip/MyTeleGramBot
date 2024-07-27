@@ -1,0 +1,7 @@
+{
+    "excluded_users": ["User1", "User2", "User3"],
+    "allowed_groups": {
+        "00000000": "Group1",
+        "000000001": "Group2"
+    }
+}
