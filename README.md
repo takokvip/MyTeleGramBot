@@ -1,4 +1,4 @@
-# Telegram Bot - CODE BY TAK OKVIP
+# Telegram Bot ALLIN ONE - CODE BY TAK OKVIP
 
 ## How to Install
 
