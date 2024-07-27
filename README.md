@@ -1,2 +1,2 @@
-# MyTeleGramBot
+# MyTeleGramBot - TAK OKVIP
 MyTeleGramBot
