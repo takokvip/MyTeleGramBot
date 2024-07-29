@@ -6,6 +6,7 @@ import os
 import json
 import asyncio
 import time
+from datetime import datetime, time as dt_time, timezone, timedelta
 
 # Load biến môi trường từ tệp .env
 load_dotenv()
@@ -44,6 +45,16 @@ def save_settings(excluded_users, allowed_groups):
 
 # Tải danh sách loại trừ và nhóm được phép
 excluded_users, allowed_groups = load_settings()
+
+# Hàm kiểm tra nếu thời gian hiện tại trong khoảng thời gian cho phép
+def is_within_time_range():
+    now = datetime.now(timezone(timedelta(hours=7))).time()  # Giờ hiện tại theo múi giờ +7
+    start_time = dt_time(22, 30)
+    end_time = dt_time(12, 0)
+
+    if start_time <= now or now <= end_time:
+        return True
+    return False
 
 # Hàm gửi sticker
 async def send_sticker(client, chat_id, sticker):
@@ -102,6 +113,11 @@ async def main():
         # Bỏ qua các tin nhắn do chính bot gửi đi
         if event.out:
             print("Message sent by the bot itself. Ignoring.")
+            return
+
+        # Kiểm tra nếu trong khoảng thời gian cho phép và không phải là lệnh từ target_user
+        if not is_within_time_range() and sender_username != target_user:
+            print("Outside of active hours. Ignoring message.")
             return
 
         # Xử lý tin nhắn riêng tư
