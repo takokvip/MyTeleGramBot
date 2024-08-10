@@ -1,123 +1,123 @@
-# Telegram Bot with Advanced Features
 
-This repository contains a Telegram bot that offers various advanced features, including handling messages, automating tasks, and managing groups and users. The bot is built using the Telethon library and can be customized for different use cases.
+# Telegram Bot Documentation
 
-## Features
-
-- **/on**: Activates the bot with a default operating time.
-- **/off**: Deactivates the bot temporarily, setting the operating time to the current time.
-- **/ve {prompt}**: Generates an image based on the provided prompt using DALL-E 3 API.
-- **/xoa**: Deletes all conversations between you and the bot from both sides.
-- **/clear**: Deletes chat history between you and the bot from the bot's side only.
-- **/adduser @user**: Adds a user to the exclusion list, preventing the bot from interacting with them.
-- **/deluser @user**: Removes a user from the exclusion list.
-- **/addgroup @id_group**: Adds a group to the allowed list, enabling the bot to interact within that group.
-- **/delgroup @id_group**: Removes a group from the allowed list.
-- **/listuser**: Displays a list of all users the bot interacts with.
-- **/listgroup**: Displays a list of all groups the bot participates in.
-- **/showuser**: Shows the exclusion list of users.
-- **/showgroup**: Shows the list of allowed groups.
-- **/hat {lyric} @user**: Sends a lyric to the specified user, simulating a singing experience.
-
-## Prerequisites
-
-Before you begin, ensure you have met the following requirements:
-
-- Python 3.7+
-- A Telegram account
-- [Telethon](https://docs.telethon.dev/en/stable/) library installed
-- An API key for DALL-E 3 (for image generation)
+This document provides instructions on installing, configuring, and using the Telegram bot.
 
 ## Installation
 
-1. **Clone the Repository:**
+1. Clone the repository:
 
-    ```bash
-    git clone https://github.com/yourusername/your-repository.git
-    cd your-repository
-    ```
+```bash
+git clone https://github.com/yourusername/yourrepository.git
+```
 
-2. **Create and Activate a Virtual Environment (Optional but Recommended):**
+2. Navigate to the project directory:
 
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-    ```
+```bash
+cd yourrepository
+```
 
-3. **Install Dependencies:**
+3. Create a virtual environment:
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+```bash
+python3 -m venv .venv
+```
 
-4. **Set Up Environment Variables:**
+4. Activate the virtual environment:
 
-    Create a `.env` file in the root directory of the project and add the following environment variables:
+- On macOS/Linux:
+  
+  ```bash
+  source .venv/bin/activate
+  ```
 
-    ```env
-    API_ID=your_api_id
-    API_HASH=your_api_hash
-    PHONE_NUMBER=your_phone_number
-    TARGET_USER=target_user_username
-    API_CHATGPT=your_chatgpt_api_key
-    ```
+- On Windows:
 
-    - Replace `your_api_id` with your Telegram API ID.
-    - Replace `your_api_hash` with your Telegram API Hash.
-    - Replace `your_phone_number` with your Telegram phone number.
-    - Replace `target_user_username` with the username of the target user.
-    - Replace `your_chatgpt_api_key` with your DALL-E 3 API key.
+  ```bash
+  .venv\Scripts\activate
+  ```
 
-5. **Run the Bot:**
+5. Install the required dependencies:
 
-    ```bash
-    python U-rep-to-rep.py
-    ```
+```bash
+pip install -r requirements.txt
+```
+
+6. Configure the `.env` file:
+
+Create a `.env` file in the root directory of the project and add your Telegram API credentials and other necessary configurations:
+
+```bash
+API_ID=your_api_id
+API_HASH=your_api_hash
+PHONE_NUMBER=your_phone_number
+TARGET_USER=your_target_user
+API_CHATGPT=your_chatgpt_api_key
+```
+
+Replace `your_api_id`, `your_api_hash`, `your_phone_number`, `your_target_user`, and `your_chatgpt_api_key` with your actual values.
 
 ## Usage
 
-Once the bot is running, you can interact with it through your Telegram account. Here are some examples:
+1. Start the bot:
 
-- **Activate the Bot:**
+```bash
+python main.py
+```
 
-    ```bash
-    /on
-    ```
+2. Use the following commands to interact with the bot:
 
-- **Deactivate the Bot:**
+### Bot Commands
 
-    ```bash
-    /off
-    ```
+- `/on`: Activate the bot and set its active hours to 12:00 to 22:30.
+- `/off`: Deactivate the bot and set its active hours to the current time.
+- `/ve {prompt}`: Generate an image based on the given prompt (e.g., `/ve A beautiful sunset`).
+- `/xoa`: Delete all chat history between you and the bot from both sides.
+- `/xoa @user`: Delete all chat history between the bot and a specified user from both sides.
+- `/clear`: Clear all chat history between you and the bot from the bot's side only.
+- `/clear @user`: Clear all chat history between the bot and a specified user from the bot's side only.
+- `/adduser @user`: Add a user to the exclusion list; the bot will not interact with this user.
+- `/deluser @user`: Remove a user from the exclusion list.
+- `/addgroup @id_group group_name`: Add a group to the allowed list; the bot will listen and interact in this group.
+- `/delgroup @id_group`: Remove a group from the allowed list.
+- `/listuser`: Show the list of all users the bot has interacted with.
+- `/listgroup`: Show the list of all groups the bot has joined.
+- `/showuser`: Show the list of users in the exclusion list.
+- `/showgroup`: Show the list of groups in the allowed list.
+- `/spam @user`: Send a series of stickers to a specified user.
 
-- **Generate an Image:**
+### Sending Messages to Users and Groups
 
-    ```bash
-    /ve A beautiful sunset over the mountains
-    ```
+1. **Sending a Message to a User:**
+   - To send a message to a specific user, use the following format:
+     ```
+     [Your message content] @username
+     ```
+   - Replace `@username` with the actual username of the recipient.
 
-- **Delete Conversations:**
+2. **Sending a Message to a Group:**
+   - To send a message to a group, use the following format:
+     ```
+     [Your message content] @group_id
+     ```
+   - Replace `@group_id` with the actual ID of the group.
 
-    ```bash
-    /xoa
-    ```
+3. **Tagging Users in a Group:**
+   - If you want to tag a user in a group, use the following format:
+     ```
+     [Your message content] #username @group_id
+     ```
+   - Replace `#username` with the username of the person you want to tag and `@group_id` with the group ID.
 
-- **Add a User to the Exclusion List:**
+## Notes
 
-    ```bash
-    /adduser @username
-    ```
-
-- **Send a Lyric:**
-
-    ```bash
-    /hat Hello, how are you? @username
-    ```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+- The bot operates within a specific time range, which can be adjusted using the `/on` and `/off` commands.
+- All operations are logged to the console for monitoring and debugging purposes.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+If you'd like to contribute, please fork the repository and use a feature branch. Pull requests are warmly welcome.
