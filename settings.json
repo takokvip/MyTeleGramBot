@@ -1,7 +1,8 @@
 {
-    "excluded_users": ["User1", "User2", "User3"],
+    "excluded_users": [
+        "bear110301"
+    ],
     "allowed_groups": {
-        "00000000": "Group1",
-        "000000001": "Group2"
+        "4245747851": "mb56789 Ca_TAK - Masila - musa la"
     }
 }
