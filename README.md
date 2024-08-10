@@ -1,62 +1,123 @@
-# Telegram Bot ALLIN ONE - CODE BY TAK OKVIP
+# Telegram Bot with Advanced Features
 
-## How to Install
+This repository contains a Telegram bot that offers various advanced features, including handling messages, automating tasks, and managing groups and users. The bot is built using the Telethon library and can be customized for different use cases.
 
-**Python Required**
+## Features
 
-1. Install the required libraries:
+- **/on**: Activates the bot with a default operating time.
+- **/off**: Deactivates the bot temporarily, setting the operating time to the current time.
+- **/ve {prompt}**: Generates an image based on the provided prompt using DALL-E 3 API.
+- **/xoa**: Deletes all conversations between you and the bot from both sides.
+- **/clear**: Deletes chat history between you and the bot from the bot's side only.
+- **/adduser @user**: Adds a user to the exclusion list, preventing the bot from interacting with them.
+- **/deluser @user**: Removes a user from the exclusion list.
+- **/addgroup @id_group**: Adds a group to the allowed list, enabling the bot to interact within that group.
+- **/delgroup @id_group**: Removes a group from the allowed list.
+- **/listuser**: Displays a list of all users the bot interacts with.
+- **/listgroup**: Displays a list of all groups the bot participates in.
+- **/showuser**: Shows the exclusion list of users.
+- **/showgroup**: Shows the list of allowed groups.
+- **/hat {lyric} @user**: Sends a lyric to the specified user, simulating a singing experience.
 
-    ```sh
+## Prerequisites
+
+Before you begin, ensure you have met the following requirements:
+
+- Python 3.7+
+- A Telegram account
+- [Telethon](https://docs.telethon.dev/en/stable/) library installed
+- An API key for DALL-E 3 (for image generation)
+
+## Installation
+
+1. **Clone the Repository:**
+
+    ```bash
+    git clone https://github.com/yourusername/your-repository.git
+    cd your-repository
+    ```
+
+2. **Create and Activate a Virtual Environment (Optional but Recommended):**
+
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+    ```
+
+3. **Install Dependencies:**
+
+    ```bash
     pip install -r requirements.txt
     ```
 
-2. Configure the `.env` file:
+4. **Set Up Environment Variables:**
 
-    Create a `.env` file in the same directory as your script and add the following content:
+    Create a `.env` file in the root directory of the project and add the following environment variables:
 
     ```env
     API_ID=your_api_id
     API_HASH=your_api_hash
     PHONE_NUMBER=your_phone_number
-    TARGET_USER=your_target_user
+    TARGET_USER=target_user_username
+    API_CHATGPT=your_chatgpt_api_key
     ```
 
-    Replace `your_api_id`, `your_api_hash`, `your_phone_number`, and `your_target_user` with your actual Telegram API credentials and target user.
+    - Replace `your_api_id` with your Telegram API ID.
+    - Replace `your_api_hash` with your Telegram API Hash.
+    - Replace `your_phone_number` with your Telegram phone number.
+    - Replace `target_user_username` with the username of the target user.
+    - Replace `your_chatgpt_api_key` with your DALL-E 3 API key.
 
-3. Run the script:
+5. **Run the Bot:**
 
-    ```sh
-    python U-rep-to-rep.py
+    ```bash
+    python main.py
     ```
 
-## Bot Functions
+## Usage
 
-1. **/xoa & /xoa @user**: Delete all messages from both Admin & Bot side.
-2. **/clear & /clear @user**: Delete messages only on the BOT side.
-3. **/adduser & /deluser**: Add or remove users to avoid abuse.
-4. **/addgroup & /delgroup**: Add or remove groups with permission to listen to messages.
-5. **/listuser & /listgroup**: Show the list of added users and groups.
-6. **/showuser & /showgroup**: Show the list of excluded users and allowed groups.
+Once the bot is running, you can interact with it through your Telegram account. Here are some examples:
 
-   ```sh
-    /spam @user (learn don't abuse ^^!)
+- **Activate the Bot:**
+
+    ```bash
+    /on
     ```
 
-## How to Reply to a Message
+- **Deactivate the Bot:**
 
-When there is a message to the BOT, the BOT will forward it to the admin. If the admin wants to reply, just follow these instructions:
+    ```bash
+    /off
+    ```
 
-- For personal messages: Send a message in the format `Content @User`.
-- For group messages: Send a message in the format `Content @group_id`.
+- **Generate an Image:**
 
-All messages should be sent to the BOT, and the BOT will act as an intermediary to send the message, ensuring that the admin's name is not exposed anywhere.
+    ```bash
+    /ve A beautiful sunset over the mountains
+    ```
 
----
+- **Delete Conversations:**
 
-## Example .env file
+    ```bash
+    /xoa
+    ```
 
-```env
-API_ID=25169999
-API_HASH=a95b580f11a6b1975c9d64f15502b999
-PHONE_NUMBER=+84987654321
-TARGET_USER=MyAdminControl
+- **Add a User to the Exclusion List:**
+
+    ```bash
+    /adduser @username
+    ```
+
+- **Send a Lyric:**
+
+    ```bash
+    /hat Hello, how are you? @username
+    ```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
