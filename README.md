@@ -71,7 +71,7 @@ Before you begin, ensure you have met the following requirements:
 5. **Run the Bot:**
 
     ```bash
-    python main.py
+    python U-rep-to-rep.py
     ```
 
 ## Usage
