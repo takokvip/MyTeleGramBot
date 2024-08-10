@@ -102,13 +102,6 @@ python main.py
      ```
    - Replace `@group_id` with the actual ID of the group.
 
-3. **Tagging Users in a Group:**
-   - If you want to tag a user in a group, use the following format:
-     ```
-     [Your message content] #username @group_id
-     ```
-   - Replace `#username` with the username of the person you want to tag and `@group_id` with the group ID.
-
 ## Notes
 
 - The bot operates within a specific time range, which can be adjusted using the `/on` and `/off` commands.
