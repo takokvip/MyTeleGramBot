@@ -1,7 +1,7 @@
 
-# Telegram Bot Documentation
+# Telegram Bot with Advanced Features
 
-This document provides instructions on installing, configuring, and using the Telegram bot.
+This repository contains a Telegram bot that offers various advanced features, including handling messages, automating tasks, and managing groups and users. The bot is built using the Telethon library and can be customized for different use cases.
 
 ## Installation
 
