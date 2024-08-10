@@ -67,7 +67,7 @@ python main.py
 
 2. Use the following commands to interact with the bot:
 
-### Bot Commands
+### Bot Commands /sd to use
 
 - `/on`: Activate the bot and set its active hours to 12:00 to 22:30.
 - `/off`: Deactivate the bot and set its active hours to the current time.
