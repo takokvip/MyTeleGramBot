@@ -1,2 +1,6 @@
 telethon
 python-dotenv
+openai==0.28
+requests
+qrcode[pil]
+colorama
