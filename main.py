@@ -5,6 +5,7 @@ from telethon.tl.types import InputStickerSetShortName, User, Channel, Chat
 from telethon.errors.rpcerrorlist import SessionPasswordNeededError
 from telethon.tl.functions.users import GetFullUserRequest
 from telethon.tl.types import UserStatusEmpty, UserStatusOnline, UserStatusOffline, UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth
+from telethon.tl.types import User, Channel
 from dotenv import load_dotenv
 import os
 import json
@@ -124,22 +125,22 @@ async def handle_off_command(sender_id, sender_name, sender_username):
             parse_mode='html'
         )
 
-# Hàm xử lý lệnh được gọi bởi sự kiện
-@client.on(events.NewMessage)
-async def handle_command(event):
-    sender = await event.get_sender()
-    sender_id = sender.id
-    sender_name = sender.first_name
-    sender_username = sender.username
-
 # -----------------------------------------------------------------------
 # Hàm xử lý lệnh được gọi bởi sự kiện
 @client.on(events.NewMessage)
 async def handle_command(event):
     sender = await event.get_sender()
     sender_id = sender.id
-    sender_name = sender.first_name
-    sender_username = sender.username
+    
+    if isinstance(sender, User):
+        sender_name = sender.first_name
+        sender_username = sender.username
+    elif isinstance(sender, Channel) or isinstance(sender, Chat):
+        sender_name = sender.title
+        sender_username = sender.username if sender.username else 'unknown'
+    else:
+        sender_name = "Unknown"
+        sender_username = "unknown"
     
     # Nếu lệnh là /on hoặc /off, xử lý đặc biệt
     if event.message.message == '/on':
@@ -154,7 +155,7 @@ async def handle_command(event):
         '/on', '/off', '/ve', '/xoa', '/clear', '/listuser', 
         '/adduser', '/showuser', '/deluser', '/listgroup', 
         '/addgroup', '/showgroup', '/delgroup', '/hat', 
-        '/spam', '/checkve', '/addve', '/donate'
+        '/spam', '/checkve', '/addve', '/donate', '/sd', '/check'
     )):
         print(f"{Fore.RED}Outside of active hours. Ignoring message.")
         return
@@ -289,6 +290,10 @@ async def handle_command(event):
                     await client.send_message(target_user, "ID nhóm không hợp lệ hoặc bạn không có quyền gửi tin nhắn vào nhóm.")
                     return
                 
+                # Lấy thông tin về nhóm để lấy tên nhóm
+                chat = await client.get_entity(recipient_id)
+                chat_title = chat.title
+
                 sent_message = None
                 full_message = ""
 
@@ -306,14 +311,14 @@ async def handle_command(event):
                         else:
                             await sent_message.edit(updated_message)
 
-                        await asyncio.sleep(0.7)
+                        await asyncio.sleep(0.9)
 
                     full_message += current_message.strip() + "\n"
                     await asyncio.sleep(2)
 
-                print(f"\033[32mSent text to group \033[1;33m{recipient_identifier}\033[0;32m successfully.\033[0m")
-                await client.send_message(target_user, f"Đã gửi xong văn bản tới nhóm <b>{recipient_identifier}</b>.", parse_mode='html')
-                await asyncio.sleep(3)
+                print(f"\033[32mSent text to group \033[1;33m{chat_title} (@{recipient_identifier})\033[0;32m successfully.\033[0m")
+                await client.send_message(target_user, f"Đã gửi xong văn bản tới nhóm <b>{chat_title}</b> (@{recipient_identifier}).", parse_mode='html')
+                await asyncio.sleep(10)
                 await sent_message.delete()
             else:
                 # Nếu là username, gửi tin nhắn cho người dùng
@@ -322,7 +327,8 @@ async def handle_command(event):
                     await client.send_message(target_user, "Không tìm thấy người dùng.")
                     return
 
-                full_name = f"{recipient.first_name} {recipient.last_name}".strip()
+                # Lấy first_name và last_name, nếu last_name là None thì thay thế bằng chuỗi trống
+                full_name = f"{recipient.first_name} {recipient.last_name or ''}".strip()
 
                 sent_message = None
                 full_message = ""
@@ -346,7 +352,7 @@ async def handle_command(event):
                     full_message += current_message.strip() + "\n"
                     await asyncio.sleep(2)
 
-                print(f"\033[32mSent text to \033[1;33m{recipient_identifier}\033[0;32m successfully.\033[0m")
+                print(f"\033[32mSent text to \033[1;33m@{recipient_identifier}\033[0;32m successfully.\033[0m")
                 await client.send_message(target_user, f"Đã gửi xong văn bản tới <b>{full_name}</b> (@{recipient_identifier}).", parse_mode='html')
                 await asyncio.sleep(3)
                 await sent_message.delete()
@@ -359,6 +365,7 @@ async def handle_command(event):
     # Xử lý lệnh /xoa @user
     if event.message.message.startswith('/xoa '):
         print(f"{Fore.RED}Received /xoa command.")
+        
         if sender_username != target_user:
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
             await client.send_message(
@@ -372,7 +379,15 @@ async def handle_command(event):
             target_user_to_delete = event.message.message.split(' ')[1].lstrip('@')
             user_entity = await client.get_entity(target_user_to_delete)
             await client.delete_dialog(user_entity.id, revoke=True)
+
+            full_name = f"{user_entity.first_name} {user_entity.last_name or ''}".strip()
+
             print(f"\033[32mDeleted the entire chat with \033[1;31m@{target_user_to_delete}\033[0m.")
+            await client.send_message(
+                target_user, 
+                f"Successfully deleted the conversation with <b>{full_name}</b> (@{target_user_to_delete}).", 
+                parse_mode='html'
+            )
         except Exception as e:
             print(f"\033[31mFailed to delete chat with \033[1;33m@{target_user_to_delete}\033[0;31m: {e}\033[0m")
         return
@@ -399,6 +414,7 @@ async def handle_command(event):
     # Xử lý lệnh /clear @user
     if event.message.message.startswith('/clear '):
         print(f"{Fore.YELLOW}Received /clear command.")
+        
         if sender_username != target_user:
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
             await client.send_message(
@@ -409,8 +425,22 @@ async def handle_command(event):
             return
 
         target_user_to_clear = event.message.message.split(' ')[1].lstrip('@')
-        async for message in client.iter_messages(target_user_to_clear):
-            await client.delete_messages(target_user_to_clear, message.id, revoke=False)
+        
+        try:
+            user_entity = await client.get_entity(target_user_to_clear)
+            full_name = f"{user_entity.first_name} {user_entity.last_name or ''}".strip()
+            
+            async for message in client.iter_messages(target_user_to_clear):
+                await client.delete_messages(target_user_to_clear, message.id, revoke=False)
+            
+            print(f"\033[32mCleared the entire messenger with \033[1;31m{full_name}\033[0;32m.\033[0m")
+            await client.send_message(
+                target_user, 
+                f"Successfully cleared the messenger with <b>{full_name}</b> (@{target_user_to_clear}).", 
+                parse_mode='html'
+            )
+        except Exception as e:
+            print(f"\033[31mFailed to clear messenger with \033[1;33m@{target_user_to_clear}\033[0;31m: {e}\033[0m")
         return
 
     # Xử lý lệnh /clear
@@ -798,6 +828,77 @@ async def handle_command(event):
 
         return
 
+    # Kiểm tra xem tin nhắn có phải là lệnh /check hay không
+    if event.message.message.startswith('/check '):
+        print(f"\033[34mReceived /check command.\033[0m")
+        
+        # Kiểm tra xem người gửi có phải là target_user không
+        if sender_username != target_user:
+            await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
+            await client.send_message(
+                target_user, 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/check</b>. Tôi đã ngăn chặn thành công!", 
+                parse_mode='html'
+            )
+            return
+
+        try:
+            # Lấy username từ lệnh
+            user_to_check = event.message.message.split(' ')[1].lstrip('@')
+            
+            # Lấy thông tin người dùng
+            user_entity = await client.get_entity(user_to_check)
+            full_name = f"{user_entity.first_name} {user_entity.last_name or ''}".strip()
+            username = user_entity.username
+            user_id = user_entity.id
+            status = user_entity.status
+
+            # Kiểm tra trạng thái online/offline
+            if isinstance(status, UserStatusOnline):
+                user_status = "Online"
+            elif isinstance(status, UserStatusOffline):
+                user_status = f"Offline (last seen {status.was_online})"
+            elif isinstance(status, UserStatusRecently):
+                user_status = "Recently Online"
+            elif isinstance(status, UserStatusLastWeek):
+                user_status = "Last seen within a week"
+            elif isinstance(status, UserStatusLastMonth):
+                user_status = "Last seen within a month"
+            else:
+                user_status = "Unknown"
+
+            # Lấy thông tin chi tiết về người dùng
+            full_user_info = await client(GetFullUserRequest(user_id))
+            user_bio = full_user_info.full_user.about if hasattr(full_user_info.full_user, 'about') else "Không có"
+            phone_number = full_user_info.full_user.phone if hasattr(full_user_info.full_user, 'phone') else "Không có"
+
+            # In thông tin ra console
+            print(f"\033[34mUser ID: \033[1;36m{user_id}\033[0m")
+            print(f"\033[34mFull Name: \033[1;36m{full_name}\033[0m")
+            print(f"\033[34mUsername: \033[1;36m@{username}\033[0m")
+            print(f"\033[34mStatus: \033[1;36m{user_status}\033[0m")
+            print(f"\033[34mBio: \033[1;36m{user_bio}\033[0m")
+            print(f"\033[34mPhone Number: \033[1;36m{phone_number}\033[0m")
+
+            # Gửi thông tin này đến target_user
+            await client.send_message(
+                target_user, 
+                f"Thông tin người dùng:\n\n"
+                f"ID: <code>{user_id}</code></b>\n"
+                f"Tên đầy đủ: <b>{full_name}</b>\n"
+                f"Username: <b>@{username}</b>\n"
+                f"Trạng thái: <b>{user_status}</b>\n"
+                f"Bio: <b>{user_bio}</b>\n"
+                f"Số điện thoại: <code>{phone_number}</code>\n",
+                parse_mode='html'
+            )
+            
+        except Exception as e:
+            print(f"\033[31mError retrieving user info: {e}\033[0m")
+            await client.send_message(target_user, f"Không thể lấy thông tin người dùng: {e}")
+
+        return
+    
     # Show chức năng /sd
     if event.message.message == '/sd':
         print(f"{Fore.YELLOW}Received /sd command.")
@@ -846,26 +947,55 @@ async def handle_command(event):
             print(f"{Fore.CYAN}Tin nhắn của BOT bỏ qua")
             return
 
-        sender = await event.get_sender()  # Lấy thông tin người gửi
+        # Lấy thông tin người gửi
+        sender = await event.get_sender()
         
         if isinstance(sender, User):
-            sender_name = f"{sender.first_name} {sender.last_name or ''}".strip()
-            sender_id = sender.id
-            sender_username = sender.username or "N/A"
+            sender_name = f"{sender.first_name} {sender.last_name}".strip()
+            sender_username = sender.username if sender.username else "Unknown"
         else:
-            # Nếu người gửi không phải là một User, sử dụng tên nhóm hoặc kênh
-            sender_name = "Unknown"
-            sender_id = "Unknown"
-            sender_username = "N/A"
+            # Xử lý khi sender là Channel hoặc Group
+            sender_name = f"Channel or Group: {event.chat.title}"
+            sender_username = event.chat.username if event.chat.username else "Unknown"
 
+        # Kiểm tra nếu tin nhắn là reply
+        if event.message.is_reply:
+            reply_message = await event.message.get_reply_message()
+            reply_text = reply_message.message
+
+            # Tìm kiếm @user trong tin nhắn reply
+            at_index = reply_text.rfind('@')
+            if at_index != -1:
+                user_mentioned = reply_text[at_index:].split()[0]  # Lấy username sau @
+                # Sanitize the username
+                user_mentioned = user_mentioned.strip().rstrip(")")
+
+                if user_mentioned:
+                    print(f"\033[32mDetected reply with mention of user {user_mentioned}.\033[0m")
+                    
+                    try:
+                        # Gửi lại nội dung của target_user đến @user
+                        await client.send_message(
+                            user_mentioned,
+                            event.message.message
+                        )
+                    except ValueError as e:
+                        print(f"\033[31mError sending message to {user_mentioned}: {e}\033[0m")
+                        await client.send_message(target_user, f"Failed to send message to @{user_mentioned}: {e}")
+                    return  # Kết thúc xử lý sau khi gửi tin nhắn
+                else:
+                    print(f"\033[31mNo valid user mentioned in the reply.\033[0m")
+
+        # Tiếp tục xử lý phần còn lại của mã như trước...
+        
         if event.message.media:
-            print(f"\033[35m\033[1m{sender_name} \033[0;35m({sender_id}) vừa gửi một file.\033[0m")
+            print(f"\033[35m\033[1m{sender_name} \033[0;35m({sender.id}) vừa gửi một file.\033[0m")
         else:
-            print(f"\033[35m\033[1m{sender_name} \033[0;35m({sender_id}) vừa gửi tin nhắn.\033[0m")
+            print(f"\033[35m\033[1m{sender_name} \033[0;35m({sender.id}) vừa gửi tin nhắn.\033[0m")
 
         # Kiểm tra danh sách loại trừ
         if sender_username in excluded_users:
-            print(f"\033[31mUser \033[1;33m{sender_name}\033[0;31m (\033[1;33m{sender_id}\033[0;31m) is not allowed. Ignoring message.\033[0m")
+            print(f"\033[31mUser \033[1;33m{sender_name}\033[0;31m (\033[1;33m{sender.id}\033[0;31m) is not allowed. Ignoring message.\033[0m")
             return  # Bỏ qua người dùng trong danh sách loại trừ, không thực hiện hành động nào
 
         # Xử lý tin nhắn từ target_user đến Kakalot5678
@@ -897,14 +1027,14 @@ async def handle_command(event):
             caption = message_parts[0]  # Phần chú thích (loại bỏ @user hoặc @id_nhóm)
 
             if is_group and str(group_or_user_id) in allowed_groups:
-                print(f"\033[32mForwarding message to group \033[1;33m{group_or_user_id}\033[0;32m.\033[0m")
+                print(f"\033[32mForwarding message to group \033[1;33m@{group_or_user_id}\033[0;32m.\033[0m")
                 # Gửi nội dung vào nhóm với ID chỉ định
                 if event.message.media:
                     await client.send_file(group_or_user_id, event.message.media, caption=caption)
                 else:
                     await client.send_message(group_or_user_id, caption)
             elif not is_group:
-                print(f"\033[32mForwarding message to user \033[1;33m{group_or_user_id}\033[0;32m.\033[0m")
+                print(f"\033[32mForwarding message to user \033[1;33m@{group_or_user_id}\033[0;32m.\033[0m")
                 if group_or_user_id in excluded_users:
                     print(f"\033[31mUser \033[1;33m{group_or_user_id}\033[0;31m is not allowed. Ignoring message.\033[0m")
                     await client.send_message(sender_username, f"Xin lỗi <b>@{group_or_user_id}</b> này tôi sẽ không tương tác dưới bất kỳ hình thức nào. Cảm ơn!", parse_mode='html')
@@ -916,7 +1046,7 @@ async def handle_command(event):
             else:
                 print(f"\033[31mGroup \033[1;33m{group_or_user_id}\033[0;31m is not allowed. Ignoring message.\033[0m")
         else:
-            print(f"\033[32mForwarding message to \033[1;34m{target_user}\033[0;32m.\033[0m")
+            print(f"{Fore.GREEN}Forwarding message to {target_user}.")
             # Chuyển tiếp tin nhắn văn bản đến target_user
             if event.message.media:
                 # Nếu là tin nhắn chứa tệp tin, forward đến target_user
@@ -928,7 +1058,6 @@ async def handle_command(event):
                     f"Nội dung: {event.message.message}"
                 )
                 await client.send_message(target_user, formatted_message)
-
 
     # Xử lý tin nhắn trong nhóm
     elif event.is_group:
