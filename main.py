@@ -15,6 +15,17 @@ import openai
 from datetime import datetime, time, timedelta
 import qrcode
 import asyncio
+from telethon.tl.types import MessageMediaPhoto
+# from ocr_module import ocr_function
+
+# Prompt cho ChatGPT
+tuvi_prompt = """
+As an advanced chatbot specializing in Vietnamese astrology (Tử Vi), your primary goal is to assist users by providing detailed and accurate horoscopic analyses based on traditional Vietnamese astrology. You are knowledgeable about the Vietnamese zodiac, birth charts, and various aspects of life such as love, career, health, and fortune. Your expertise also extends to Feng Shui and other related Eastern philosophies.
+
+When responding to user queries, it is crucial to be specific and thorough. Offer detailed explanations, contextual advice, and actionable insights based on the principles of Vietnamese astrology. If the user's question does not fall within your domain of expertise, politely inform them that their query is outside your area of knowledge and suggest they seek advice elsewhere. Prioritize user satisfaction by providing clear, concise, and culturally appropriate responses that reflect your deep understanding of Vietnamese astrology and related practices.
+
+If the content provided by the user is unrelated to astrology or cannot be analyzed based on horoscopic principles, respond with: "Không đúng chuyên môn, vui lòng trở lại sau."
+"""
 
 # Initialize colorama
 init(autoreset=True)
@@ -212,7 +223,45 @@ async def handle_command(event):
         await handle_check_command(event, sender_id, sender_username, target_user)
     elif event.message.message == '/sd':
         await handle_sd_command(event, sender_id, sender_username, target_user)
+    elif event.message.message.startswith('/tuvi '):
+        await handle_tuvi_command(event, sender_id, sender_username, target_user)
 
+# Xem Tử Vi 2024
+async def handle_tuvi_command(event, sender_id, sender_username, target_user):
+    sender = await event.get_sender()
+    first_name = sender.first_name or ""
+    last_name = sender.last_name or ""
+    sender_name_display = f"{first_name} {last_name}".strip()
+
+    # Kiểm tra nếu có hình ảnh kèm theo
+    if event.message.media and isinstance(event.message.media, MessageMediaPhoto):
+        tuvi_content = event.message.message.split(' ', 1)[1].strip()
+        photo_path = await event.message.download_media()
+        ocr_text = ocr_function(photo_path)
+        tuvi_content += ' ' + ocr_text
+    else:
+        tuvi_content = event.message.message[6:].strip()
+
+    if not tuvi_content:
+        await event.respond("Vui lòng cung cấp nội dung muốn xem tử vi sau lệnh /tuvi.")
+        return
+
+    openai.api_key = api_chatgpt
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": tuvi_prompt},
+                {"role": "user", "content": tuvi_content}
+            ]
+        )
+        tuvi_analysis = response['choices'][0]['message']['content'].strip()
+        await event.respond(tuvi_analysis)
+    except Exception as e:
+        print(f"Error generating Tu Vi analysis: {e}")
+        await event.respond("Đã xảy ra lỗi khi phân tích tử vi. Vui lòng thử lại sau.")
+        
 # Hàm xử lý lệnh /donate
 async def handle_donate_command(sender_id, sender_name, sender_username):
     print(f"{Fore.BLUE}Received /donate command.")
