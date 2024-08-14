@@ -11,10 +11,17 @@ import os
 import json
 import requests
 import openai
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import qrcode
 import asyncio
+import subprocess
 
+def run_bot_new():
+    subprocess.Popen(['python', 'bot.py'])
+
+if __name__ == "__main__":
+    run_bot_new()
+    
 # Initialize colorama
 init(autoreset=True)
 
@@ -30,6 +37,10 @@ api_chatgpt = os.getenv('API_CHATGPT')
 
 # Vẽ vời
 max_daily_drawings = 6
+
+# RESET LƯỢT VẼ
+last_reset_date = None
+
 
 # Biến tạm để lưu ID của người dùng hiện đang sử dụng lệnh /ve
 current_user = None
@@ -79,6 +90,18 @@ def save_ve_usage(ve_usage):
 excluded_users, allowed_groups = load_settings()
 ve_usage = load_ve_usage()
 
+# Rs lượt vẽ
+def reset_daily_usage():
+    global ve_usage, last_reset_date
+    current_date = datetime.now().date()
+
+    if last_reset_date is None or last_reset_date != current_date:
+        # Reset tất cả các người dùng về số lượt mặc định mỗi ngày theo max_daily_drawings
+        ve_usage = {user: max_daily_drawings for user in ve_usage}  
+        last_reset_date = current_date
+        save_ve_usage(ve_usage)
+        print(f"\033[1;32mLượt sử dụng lệnh /ve đã được reset cho ngày mới ({current_date}) về {max_daily_drawings}.\033[0m")
+        
 # -----------------------------------------------------------------------
 # Biến lưu trữ thời gian bắt đầu và kết thúc mặc định
 default_start_time = time(22, 30)  # 22:30
@@ -100,6 +123,8 @@ async def handle_on_command(sender_id, sender_name, sender_username):
         start_time = default_start_time
         end_time = default_end_time
         await client.send_message(target_user, "<b>Bot</b> đã được bật, thời gian hoạt động từ <b>12:00</b> đến <b>22:30</b>.", parse_mode='html')
+        
+        print(f"\033[1;32mBOT is back to work.\033[0m")
     else:
         await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
         # Gửi thông báo cho target_user
@@ -116,6 +141,8 @@ async def handle_off_command(sender_id, sender_name, sender_username):
         start_time = time.min  # Đặt giờ bắt đầu thành 00:00
         end_time = time.max  # Đặt giờ kết thúc thành 23:59:59
         await client.send_message(target_user, f"<b>Bot</b> hiện không bị giới hạn thời gian hoạt động.", parse_mode='html')
+        
+        print(f"{Fore.RED}BOT stops working.")
     else:
         await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
         # Gửi thông báo cho target_user
@@ -132,15 +159,16 @@ async def handle_command(event):
     sender = await event.get_sender()
     sender_id = sender.id
     
+    # Kiểm tra loại người gửi: User, Channel hoặc Group
     if isinstance(sender, User):
-        sender_name = sender.first_name
-        sender_username = sender.username
-    elif isinstance(sender, Channel) or isinstance(sender, Chat):
+        sender_name = f"{sender.first_name} {sender.last_name}".strip()
+        sender_username = sender.username if sender.username else "Unknown"
+    elif isinstance(sender, (Channel, Chat)):
         sender_name = sender.title
-        sender_username = sender.username if sender.username else 'unknown'
+        sender_username = sender.username if sender.username else "Unknown"
     else:
         sender_name = "Unknown"
-        sender_username = "unknown"
+        sender_username = "Unknown"
     
     # Nếu lệnh là /on hoặc /off, xử lý đặc biệt
     if event.message.message == '/on':
@@ -164,6 +192,7 @@ async def handle_command(event):
 
     # Xử lý lệnh vẽ
     if event.message.message.startswith('/ve '):
+        reset_daily_usage()  # Reset nếu cần trước khi xử lý lệnh
         prompt = event.message.message[4:]
         user_usage = ve_usage.get(sender_username, 0)
 
@@ -220,21 +249,28 @@ async def handle_command(event):
 
     # Check lượt sử dụng vẽ
     if event.message.message == '/checkve':
-        user_usage = ve_usage.get(sender_username, 0)
+        user_usage = ve_usage.get(sender_username, max_daily_drawings)
+        
         if sender_username == target_user:
             await client.send_message(sender_id, "Bạn không giới hạn lượt sử dụng.")
         else:
-            remaining_usage = max_daily_drawings - user_usage
+            remaining_usage = max(user_usage, 0)  # Đảm bảo không có số âm
             await client.send_message(sender_id, f"Bạn còn <b>{remaining_usage}</b> lượt sử dụng.", parse_mode='html')
         return
 
     # Xử lý lệnh /addve @user {số lượt}
     if event.message.message.startswith('/addve '):
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/addve</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/addve</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -243,7 +279,14 @@ async def handle_command(event):
         if len(parts) == 3:
             user_to_add = parts[1].lstrip('@')
             add_amount = int(parts[2])
-            ve_usage[user_to_add] = ve_usage.get(user_to_add, 0) + add_amount
+
+            # Kiểm tra nếu người dùng đã có trong ve_usage, nếu không thì khởi tạo với giá trị max_daily_drawings
+            if user_to_add not in ve_usage:
+                ve_usage[user_to_add] = max_daily_drawings
+
+            # Cộng thêm lượt sử dụng vào số lượt hiện tại
+            ve_usage[user_to_add] = max(ve_usage[user_to_add] + add_amount, 0)  # Đảm bảo không bao giờ âm
+            
             save_ve_usage(ve_usage)
 
             me = await client.get_me()
@@ -253,15 +296,22 @@ async def handle_command(event):
             await client.send_message(user_to_add, f"Chào bạn <b>{bot_name}</b> vừa thêm cho bạn <b>{add_amount}</b> lượt sử dụng lệnh /ve để vẽ tranh rồi đó.", parse_mode='html')
         return
 
+
     # Xử lý lệnh /hat {lyric} @user
     if event.message.message.startswith('/hat '):
         print(f"\033[33mReceived /hat command.\033[0m")
         
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
             await client.send_message(
                 target_user,
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/hat</b>. Tôi đã ngăn chặn thành công!",
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/hat</b>. Tôi đã ngăn chặn thành công!",
                 parse_mode='html'
             )
             return
@@ -367,10 +417,16 @@ async def handle_command(event):
         print(f"{Fore.RED}Received /xoa command.")
         
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/xoa @</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/xoa @</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -396,10 +452,16 @@ async def handle_command(event):
     if event.message.message == '/xoa':
         print(f"{Fore.RED}Received /xoa command to delete all messages.")
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/xoa</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/xoa</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -416,10 +478,16 @@ async def handle_command(event):
         print(f"{Fore.YELLOW}Received /clear command.")
         
         if sender_username != target_user:
+            
+            # Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+        
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/clear @</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/clear @</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -448,9 +516,15 @@ async def handle_command(event):
         print(f"{Fore.YELLOW}Received /clear command to delete all messages.")
         if sender_username != target_user:
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
+
+            # Xử lý để loại bỏ "None"
+            sender_first_name = sender.first_name or ""
+            sender_last_name = sender.last_name or ""
+            sender_name_display = f"{sender_first_name} {sender_last_name}".strip()
+
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/clear</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/clear</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -465,12 +539,18 @@ async def handle_command(event):
         
         # Check if the command is issued by the target_user
         if sender_username != target_user:
+            
+            # Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
             
             # Notify the target_user about the unauthorized attempt
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/spam</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/spam</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -525,12 +605,18 @@ async def handle_command(event):
         
         # Check if the command is issued by the target_user
         if sender_username != target_user:
+            
+            # Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
 
             # Notify the target_user about the unauthorized attempt
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/delgroup</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/delgroup</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -564,12 +650,18 @@ async def handle_command(event):
 
         # Check if the command is issued by the target_user
         if sender_username != target_user:
+            
+            # Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
 
             # Notify the target_user about the unauthorized attempt
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/showgroup</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/showgroup</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -590,12 +682,18 @@ async def handle_command(event):
         
         # Check if the command is issued by the target_user
         if sender_username != target_user:
+            
+            # Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
 
             # Notify the target_user about the unauthorized attempt
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/addgroup</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/addgroup</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -634,12 +732,18 @@ async def handle_command(event):
 
         # Check if the command is issued by the target_user
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
 
             # Notify the target_user about the unauthorized attempt
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/listgroup</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/listgroup</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -677,12 +781,18 @@ async def handle_command(event):
         
         # Check if the command is issued by the target_user
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
 
             # Notify the target_user about the unauthorized attempt
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/deluser</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/deluser</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -715,12 +825,18 @@ async def handle_command(event):
 
         # Check if the command is issued by the target_user
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
 
             # Notify the target_user about the unauthorized attempt
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/showuser</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/showuser</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -751,12 +867,18 @@ async def handle_command(event):
         
         # Check if the command is issued by the target_user
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
 
             # Notify the target_user about the unauthorized attempt
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/adduser</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/adduser</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -788,12 +910,18 @@ async def handle_command(event):
 
         # Check if the command is issued by the target_user
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
 
             # Notify the target_user about the unauthorized attempt
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/listuser</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/listuser</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -834,10 +962,16 @@ async def handle_command(event):
         
         # Kiểm tra xem người gửi có phải là target_user không
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/check</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/check</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -905,12 +1039,18 @@ async def handle_command(event):
         
         # Check if the command is issued by the target_user
         if sender_username != target_user:
+            
+            #Xử lý tên người gửi để tránh hiển thị "None"
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            sender_name_display = f"{first_name} {last_name}".strip()
+            
             await client.send_message(sender_id, "Xin lỗi bạn không đủ quyền vận hành.")
             
             # Notify the target_user about the unauthorized attempt
             await client.send_message(
                 target_user, 
-                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name}</b> (@{sender_username}) đang lạm dụng lệnh <b>/sd</b>. Tôi đã ngăn chặn thành công!", 
+                f"<b>THÔNG BÁO</b>\nNgười dùng <b>{sender_name_display}</b> (@{sender_username}) đang lạm dụng lệnh <b>/sd</b>. Tôi đã ngăn chặn thành công!", 
                 parse_mode='html'
             )
             return
@@ -949,7 +1089,7 @@ async def handle_command(event):
 
         # Lấy thông tin người gửi
         sender = await event.get_sender()
-        
+
         if isinstance(sender, User):
             sender_name = f"{sender.first_name} {sender.last_name}".strip()
             sender_username = sender.username if sender.username else "Unknown"
@@ -971,14 +1111,24 @@ async def handle_command(event):
                 user_mentioned = user_mentioned.strip().rstrip(")")
 
                 if user_mentioned:
-                    print(f"\033[32mDetected reply with mention of user {user_mentioned}.\033[0m")
-                    
+                    print(f"\033[32mDetected reply with mention of user \033[1;33m{user_mentioned}\033[0;32m.\033[0m")
+
                     try:
-                        # Gửi lại nội dung của target_user đến @user
-                        await client.send_message(
-                            user_mentioned,
-                            event.message.message
-                        )
+                        # Gửi lại nội dung của target_user đến @user hoặc file media nếu có
+                        if event.message.media:
+                            await client.send_file(
+                                user_mentioned,
+                                event.message.media,
+                                caption=event.message.message if event.message.message else None
+                            )
+                        elif event.message.message:
+                            await client.send_message(
+                                user_mentioned,
+                                event.message.message
+                            )
+                        else:
+                            print(f"\033[31mError: The message cannot be empty unless a file is provided.\033[0m")
+                            await client.send_message(target_user, f"Failed to send message to @{user_mentioned}: The message cannot be empty unless a file is provided.")
                     except ValueError as e:
                         print(f"\033[31mError sending message to {user_mentioned}: {e}\033[0m")
                         await client.send_message(target_user, f"Failed to send message to @{user_mentioned}: {e}")
@@ -987,11 +1137,11 @@ async def handle_command(event):
                     print(f"\033[31mNo valid user mentioned in the reply.\033[0m")
 
         # Tiếp tục xử lý phần còn lại của mã như trước...
-        
+
         if event.message.media:
-            print(f"\033[35m\033[1m{sender_name} \033[0;35m({sender.id}) vừa gửi một file.\033[0m")
+            print(f"\033[35m\033[1m{sender_name} \033[0;35m(@{sender.id}) vừa gửi một file.\033[0m")
         else:
-            print(f"\033[35m\033[1m{sender_name} \033[0;35m({sender.id}) vừa gửi tin nhắn.\033[0m")
+            print(f"\033[35m\033[1m{sender_name} \033[0;35m(@{sender.id}) vừa gửi tin nhắn.\033[0m")
 
         # Kiểm tra danh sách loại trừ
         if sender_username in excluded_users:
@@ -1046,7 +1196,7 @@ async def handle_command(event):
             else:
                 print(f"\033[31mGroup \033[1;33m{group_or_user_id}\033[0;31m is not allowed. Ignoring message.\033[0m")
         else:
-            print(f"{Fore.GREEN}Forwarding message to {target_user}.")
+            print(f"\033[32mForwarding message to \033[1;36m{target_user}\033[0;32m.\033[0m")
             # Chuyển tiếp tin nhắn văn bản đến target_user
             if event.message.media:
                 # Nếu là tin nhắn chứa tệp tin, forward đến target_user
@@ -1058,6 +1208,7 @@ async def handle_command(event):
                     f"Nội dung: {event.message.message}"
                 )
                 await client.send_message(target_user, formatted_message)
+
 
     # Xử lý tin nhắn trong nhóm
     elif event.is_group:
@@ -1082,7 +1233,7 @@ async def handle_command(event):
                 sender_username = "N/A"
 
             if event.message.media:
-                print(f"\033[35m\033[1m{sender_name} \033[0;35m- {chat.title} - (\033[1;33m{chat.id}\033[0;35m) vừa gửi một file.\033[0m")
+                print(f"\033[35m\033[1m{sender_name} \033[0;35m- {chat.title} - (\033[1;33m@{chat.id}\033[0;35m) vừa gửi một file.\033[0m")
                 # Forward the media message
                 await client.forward_messages(target_user, event.message)
                 # Send a notification after forwarding the media
@@ -1102,7 +1253,6 @@ async def handle_command(event):
                 await client.send_message(target_user, formatted_message)
         else:
             print(f"\033[31mGroup \033[1;33m{chat.title} \033[31m({chat.id}) \033[31mis not allowed. Ignoring message.\033[0m")
-
 
 # Hàm hỗ trợ lấy tên đầy đủ của người dùng
 async def get_user_full_name(client, username):
