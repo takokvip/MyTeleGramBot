@@ -13,6 +13,7 @@ from telethon.tl.types import DocumentAttributeFilename
 from dotenv import load_dotenv
 from telethon.tl.types import MessageMediaPhoto
 # import pytesseract
+import io
 from PIL import Image
 import os
 import json
@@ -347,10 +348,16 @@ async def handle_command(event):
 
             save_ve_usage(ve_usage)
 
+            # Lấy thông tin người dùng được thêm lượt
+            user_entity = await client.get_entity(user_to_add)
+            user_first_name = user_entity.first_name or ""
+            user_last_name = user_entity.last_name or ""
+            name_display = f"{user_first_name} {user_last_name}".strip()
+
             me = await client.get_me()
             bot_name = f"{me.first_name} {me.last_name or ''}".strip()
 
-            await client.send_message(sender_id, f"Bạn đã thêm <b>{add_amount}</b> lượt sử dụng lệnh <b>/ve</b> cho <b>{user_to_add}</b> thành công.", parse_mode='html')
+            await client.send_message(sender_id, f"Bạn đã thêm <b>{add_amount}</b> lượt sử dụng lệnh <b>/ve</b> cho <b>{name_display}</b> (@{user_to_add}) thành công.", parse_mode='html')
             await client.send_message(user_to_add, f"Chào bạn <b>{bot_name}</b> vừa thêm cho bạn <b>{add_amount}</b> lượt sử dụng lệnh <b>/ve</b> để vẽ tranh rồi đó. Kiểm tra <b>/checkve</b> để xem số lượt bạn còn nhé!", parse_mode='html')
         return
 
@@ -1041,7 +1048,7 @@ async def handle_command(event):
         # Kiểm tra xem người gửi có phải là target_user không
         if sender_username != target_user:
             
-            #Xử lý tên người gửi để tránh hiển thị "None"
+            # Xử lý tên người gửi để tránh hiển thị "None"
             first_name = sender.first_name or ""
             last_name = sender.last_name or ""
             sender_name_display = f"{first_name} {last_name}".strip()
@@ -1083,6 +1090,9 @@ async def handle_command(event):
             full_user_info = await client(GetFullUserRequest(user_id))
             user_bio = full_user_info.full_user.about if hasattr(full_user_info.full_user, 'about') else "Không có"
             phone_number = full_user_info.full_user.phone if hasattr(full_user_info.full_user, 'phone') else "Không có"
+            
+            # Lấy ngày tháng năm sinh (nếu có)
+            birth_date = full_user_info.full_user.birth_date if hasattr(full_user_info.full_user, 'birth_date') else "Không có"
 
             # In thông tin ra console
             print(f"\033[34mUser ID: \033[1;36m{user_id}\033[0m")
@@ -1091,6 +1101,7 @@ async def handle_command(event):
             print(f"\033[34mStatus: \033[1;36m{user_status}\033[0m")
             print(f"\033[34mBio: \033[1;36m{user_bio}\033[0m")
             print(f"\033[34mPhone Number: \033[1;36m{phone_number}\033[0m")
+            print(f"\033[34mBirth Date: \033[1;36m{birth_date}\033[0m")
 
             # Gửi thông tin này đến target_user
             await client.send_message(
@@ -1101,7 +1112,8 @@ async def handle_command(event):
                 f"Username: <b>@{username}</b>\n"
                 f"Trạng thái: <b>{user_status}</b>\n"
                 f"Bio: <b>{user_bio}</b>\n"
-                f"Số điện thoại: <code>{phone_number}</code>\n",
+                f"Số điện thoại: <code>{phone_number}</code>\n"
+                f"Ngày sinh: <code>{birth_date}</code>\n",  # Thêm ngày tháng năm sinh
                 parse_mode='html'
             )
             
@@ -1110,6 +1122,7 @@ async def handle_command(event):
             await client.send_message(target_user, f"Không thể lấy thông tin người dùng: {e}")
 
         return
+
     
     # Show chức năng /sd
     if event.message.message == '/sd':
@@ -1320,12 +1333,12 @@ async def handle_command(event):
                 
                 # Định dạng thông báo
                 formatted_message = (
-                    f"Nhóm: {truncated_chat_title} (@{chat.id})\n"
-                    f"Tên: {sender_name} (@{sender_username})\n"
+                    f"Nhóm: <b>{truncated_chat_title}</b> (@{chat.id})\n"
+                    f"Tên: <b>{sender_name}</b> (@{sender_username})\n"
                     f"Nội dung: {event.message.message}"
                 )
                 # Gửi tin nhắn văn bản với định dạng mong muốn
-                await client.send_message(target_user, formatted_message)
+                await client.send_message(target_user, formatted_message, parse_mode='html')
         else:
             print(f"\033[31mGroup \033[1;33m{chat.title} \033[31m({chat.id}) \033[31mis not allowed. Ignoring message.\033[0m")
 
@@ -1336,102 +1349,6 @@ async def get_user_full_name(client, username):
         return f"{user_entity.first_name} {user_entity.last_name or ''}".strip()
     except:
         return username
-
-# GET PIC -> PROMPT
-
-
-# Xem Tử vi 2024
-# def ocr_using_tesseract(image_path, output_base, lang='vie'):
-#     """Chức năng OCR sử dụng Tesseract từ dòng lệnh với ngôn ngữ tiếng Việt."""
-#     try:
-#         # Đường dẫn đến tesseract.exe
-#         tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-#         # Gọi lệnh Tesseract từ dòng lệnh với các tham số tối ưu cho tiếng Việt
-#         subprocess.run([
-#             tesseract_cmd, 
-#             image_path, 
-#             output_base, 
-#             '-l', lang, 
-#             '--oem', '3', 
-#             '--psm', '6',  # Tùy chọn PSM tùy thuộc vào loại hình ảnh
-#         ], check=True)
-
-#         # Đọc kết quả từ file output
-#         with open(f"{output_base}.txt", "r", encoding="utf-8") as file:
-#             text = file.read()
-#         return text.strip()
-#     except subprocess.CalledProcessError as e:
-#         print(f"Error during OCR: {e}")
-#         return ""
-
-# def preprocess_ocr_text(ocr_text):
-#     """Tiền xử lý văn bản OCR để chỉ giữ lại thông tin quan trọng."""
-#     # Xóa các ký tự không cần thiết
-#     cleaned_text = re.sub(r'[^a-zA-Z0-9À-ỹ\s,]', '', ocr_text)
-    
-#     # Giữ lại các phần quan trọng như ngày sinh, giới tính, và tên sao
-#     important_info = re.findall(r'\b([A-Za-zÀ-ỹ]+)\b', cleaned_text)
-    
-#     return ' '.join(important_info)
-
-# async def get_horoscope_for_today(event):
-    # Tạm thời comment phần nạp API key cho GPT-4
-    # openai.api_key = os.getenv('API_CHATGPT')
-
-    # system_prompt = (
-    #     "Bạn là ChatGPT chuyên về tử vi. Bạn sẽ trả lời các câu hỏi về tử vi dựa trên các nguyên tắc của tử vi Việt Nam. "
-    #     "Đảm bảo câu trả lời của bạn rõ ràng, cụ thể và không giải thích quá dài dòng."
-    # )
-
-    # sender = await event.get_sender()
-    # sender_id = sender.id
-
-    # if event.message.media and isinstance(event.message.media, MessageMediaPhoto):
-    #     photo_path = await event.message.download_media()
-    #     output_base = 'output'
-    #     ocr_text = ocr_using_tesseract(photo_path, output_base)
-        
-    #     # Tiền xử lý văn bản OCR
-    #     cleaned_text = preprocess_ocr_text(ocr_text)
-    #     print(f"Kết quả OCR sau khi tiền xử lý: {cleaned_text}")
-        
-    #     # Tạo nội dung yêu cầu GPT-4
-    #     tuvi_content = event.message.message[6:].strip() + ' ' + cleaned_text
-    # else:
-    #     await event.respond("Vui lòng gửi hình ảnh lá số tử vi kèm với lệnh /tuvi.")
-    #     return
-
-    # if not tuvi_content.strip():
-    #     await event.respond("Vui lòng cung cấp nội dung muốn xem tử vi sau lệnh /tuvi.")
-    #     return
-
-    # Tạm thời comment phần xử lý GPT-4 và thay thế bằng thông báo bảo trì
-    # try:
-    #     response = openai.ChatCompletion.create(
-    #         model="gpt-4",
-    #         messages=[
-    #             {"role": "system", "content": system_prompt},
-    #             {"role": "user", "content": f"Câu hỏi tử vi: {tuvi_content}"}
-    #         ],
-    #         max_tokens=150,
-    #         temperature=0.7
-    #     )
-
-    #     tuvi_analysis = response['choices'][0]['message']['content'].strip()
-
-    #     # Gửi phản hồi cho người dùng kèm theo lá số tử vi
-    #     if tuvi_analysis:
-    #         await client.send_file(sender_id, photo_path, caption=tuvi_analysis)
-    #     else:
-    #         await client.send_message(sender_id, "Không thể tạo phản hồi tử vi, vui lòng thử lại.")
-    #
-    # except Exception as e:
-    #     print(f"Error generating Tu Vi analysis: {e}")
-    #     await client.send_message(sender_id, "Đã xảy ra lỗi khi phân tích tử vi. Vui lòng thử lại sau.")
-
-    # Thay thế bằng thông báo bảo trì
-    # await event.respond("Hệ thống đang tạm thời bảo trì. Vui lòng đợi chúng tôi cập nhật sau!")
 
 # Tối ưu hàng đợi
 async def process_queue():
@@ -1472,12 +1389,9 @@ async def process_queue():
             if image_response.status_code == 200:
                 image_data = image_response.content
 
-                # Tạo tên file với ID người dùng
-                image_filename = f"temp_image_{next_user_id}.png"
-
-                # Lưu hình ảnh vào tệp với tên file chứa ID người dùng
-                with open(image_filename, "wb") as image_file:
-                    image_file.write(image_data)
+                # Sử dụng io.BytesIO để lưu trữ ảnh trong bộ nhớ RAM
+                image_io = io.BytesIO(image_data)
+                image_io.name = f"temp_image_{next_user_id}.png"  # Đặt tên tệp tạm thời cho ảnh
 
                 # Xóa tin nhắn "Đang vẽ rồi, đợi một xí ✍️..."
                 await client.delete_messages(next_user_id, creating_msg.id)
@@ -1485,11 +1399,16 @@ async def process_queue():
                 # Gửi hình ảnh đến người dùng dưới dạng reply vào tin nhắn gốc của lệnh /ve
                 await client.send_file(
                     next_user_id,
-                    image_filename,
+                    image_io,
                     caption=f"Tranh của <b>{full_name}</b> vẽ xong rồi nè 💋",
                     parse_mode='html',
                     reply_to=original_event.message.id  # Trả lời tin nhắn gốc
                 )
+
+                print(f"Clear image in ram not save storage")
+                # Giải phóng bộ nhớ
+                image_io.close()
+
             else:
                 await client.send_message(next_user_id, "Đã xảy ra một lỗi. Vui lòng kiểm tra lại nội dung muốn vẽ.")
         except Exception as e:
